@@ -240,6 +240,38 @@ const API_KEY = '57ebea8e5cdcf68d4e8f4d20ca5bd4ac';
 
     }
 
+  init();
 
+let sliderIndex = 0;
+let sliderItems = [];
 
-    init();
+function updateSlider() {
+  const slides = document.querySelectorAll(".slide");
+  slides.forEach((s, i) => {
+    s.classList.remove("active");
+    if (i === sliderIndex) s.classList.add("active");
+  });
+  sliderIndex = (sliderIndex + 1) % slides.length;
+}
+
+async function loadSlider() {
+  const res = await fetch(`${BASE_URL}/trending/movie/week?api_key=${API_KEY}`);
+  const data = await res.json();
+  sliderItems = data.results.slice(0, 5);
+
+  const slider = document.getElementById("slider");
+  slider.innerHTML = ""; // clear first
+
+  sliderItems.forEach((item, i) => {
+    const slide = document.createElement("div");
+    slide.className = "slide" + (i === 0 ? " active" : "");
+    slide.style.backgroundImage = `url(${IMG_URL + item.backdrop_path})`;
+    slide.innerHTML = `<h1>${item.title}</h1>`;
+    slider.appendChild(slide);
+  });
+
+  setInterval(updateSlider, 5000); // every 5 seconds
+}
+
+loadSlider();
+
