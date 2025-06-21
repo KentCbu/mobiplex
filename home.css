@@ -1,0 +1,8 @@
+* { margin: 0; padding: 0; box-sizing: border-box; } 
+body { font-family: Arial, sans-serif; background: #111; color: #fff; }
+/* [Truncated for brevity — you can paste your full CSS here before delivery] */
+#rows-wrapper .row {
+  padding: 20px;
+  background: #111;
+  margin-bottom: 30px;
+}
