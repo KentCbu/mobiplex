@@ -1,99 +1,84 @@
 const API_KEY = 'a1e72fd93ed59f56e6332813b9f8dcae';
 const IMG_URL = 'https://image.tmdb.org/t/p/w500';
-const TRENDING = { movie: '/trending/movie/week', tv: '/trending/tv/week' };
+const BASE_URL = 'https://api.themoviedb.org/3';
 const ANIME_URL = 'https://api.jikan.moe/v4/top/anime';
 
-let currentType = 'movie';
-
-async function fetchTMDB(endpoint) {
-  const res = await fetch(`https://api.themoviedb.org/3${endpoint}?api_key=${API_KEY}`);
-  return res.ok ? res.json() : { results: [] };
-}
-
-async function fetchAnime() {
-  const res = await fetch(ANIME_URL);
-  return res.ok ? res.json() : { data: [] };
+async function fetchData(url) {
+  const res = await fetch(url);
+  return res.ok ? res.json() : [];
 }
 
 function createCard(item, type) {
-  const imgPath = type === 'anime' ? item.images.jpg.image_url : IMG_URL + item.poster_path;
-  if (!imgPath || imgPath.includes("null")) return null;
-  const div = document.createElement('div');
-  div.className = 'card';
-  div.innerHTML = `<img src="${imgPath}" alt="${item.title || item.name}" />`;
-  div.addEventListener('click', () => showDetails(item, type));
-  return div;
+  const imgSrc = type === 'anime' ? item.images.jpg.image_url : IMG_URL + item.poster_path;
+  if (!imgSrc || imgSrc.includes("null")) return null;
+  const img = document.createElement("img");
+  img.src = imgSrc;
+  img.alt = item.title || item.name;
+  img.addEventListener("click", () => showDetails(item, type));
+  return img;
 }
 
 async function loadSection(type) {
-  currentType = type;
-  const rowWrapper = document.getElementById('rows-wrapper');
-  rowWrapper.innerHTML = '';
-  document.getElementById('banner-title').textContent = 'Loading...';
-
   let items = [];
   if (type === 'anime') {
-    const anime = await fetchAnime();
-    items = anime.data.slice(0, 10);
+    const res = await fetchData(ANIME_URL);
+    items = res.data.slice(0, 10);
   } else {
-    const tmdb = await fetchTMDB(TRENDING[type]);
-    items = tmdb.results;
+    const res = await fetchData(`${BASE_URL}/trending/${type}/week?api_key=${API_KEY}`);
+    items = res.results;
   }
 
-  const banner = items[0];
-  document.getElementById('banner').style.backgroundImage = banner?.backdrop_path || banner?.images?.jpg?.image_url
-    ? `url(${type === 'anime' ? banner.images.jpg.image_url : IMG_URL + banner.backdrop_path})`
-    : '';
-  document.getElementById('banner-title').textContent = banner?.title || banner?.name;
+  const rowsWrapper = document.getElementById("rows-wrapper");
+  rowsWrapper.innerHTML = '';
+  const banner = document.getElementById("banner");
+  const bannerTitle = document.getElementById("banner-title");
+  const highlight = items[0];
+  banner.style.backgroundImage = `url(${type === 'anime' ? highlight.images.jpg.image_url : IMG_URL + highlight.backdrop_path})`;
+  bannerTitle.textContent = highlight.title || highlight.name;
 
-  const row = document.createElement('div');
-  row.className = 'row';
+  const row = document.createElement("div");
+  row.className = "row";
   row.innerHTML = `<h2>${type.toUpperCase()}</h2><div class="list"></div>`;
+  const list = row.querySelector(".list");
+
   items.forEach(item => {
     const card = createCard(item, type);
-    if (card) row.querySelector('.list').appendChild(card);
+    if (card) list.appendChild(card);
   });
-  rowWrapper.appendChild(row);
+
+  rowsWrapper.appendChild(row);
 }
 
-async function showDetails(item, type) {
-  document.getElementById('modal').style.display = 'flex';
-  document.getElementById('modal-poster').src = type === 'anime'
-    ? item.images.jpg.image_url
-    : IMG_URL + item.poster_path;
-  document.getElementById('modal-title').textContent = item.title || item.name;
-  document.getElementById('modal-overview').textContent = item.overview || item.synopsis || '';
-  document.getElementById('modal-vote').innerText = `⭐ ${(item.vote_average || item.score).toFixed(1)}`;
-  const wrapper = document.getElementById('video-wrapper');
-  wrapper.innerHTML = `<iframe width="100%" height="315" src="https://www.youtube.com/embed/${item.mal_id || item.id}" frameborder="0" allowfullscreen></iframe>`;
-}
+function showDetails(item, type) {
+  const modal = document.getElementById("modal");
+  document.getElementById("modal-poster").src = type === 'anime' ? item.images.jpg.image_url : IMG_URL + item.poster_path;
+  document.getElementById("modal-title").textContent = item.title || item.name;
+  document.getElementById("modal-overview").textContent = item.overview || item.synopsis || '';
+  document.getElementById("modal-vote").textContent = `â­ ${(item.vote_average || item.score).toFixed(1)}`;
 
-function closeModals() {
-  document.getElementById('modal').style.display = 'none';
-  document.getElementById('search-modal').style.display = 'none';
-}
+  const id = item.mal_id || item.id;
+  const selected = document.getElementById("server-select").value;
+  let embedUrl = "";
 
-document.getElementById('modal-close').onclick = closeModals;
-document.getElementById('search-close').onclick = closeModals;
-window.onclick = e => {
-  if (e.target === document.getElementById('modal') || e.target === document.getElementById('search-modal')) closeModals();
-};
-
-document.getElementById('btn-trending').onclick = () => loadSection('movie');
-document.getElementById('btn-tv').onclick = () => loadSection('tv');
-document.getElementById('btn-anime').onclick = () => loadSection('anime');
-
-document.getElementById('search-input').onkeypress = e => {
-  if (e.key === 'Enter') {
-    document.getElementById('search-modal').style.display = 'flex';
-    document.getElementById('search-bar-input').focus();
+  if (selected === "vidsrc") {
+    embedUrl = `https://vidsrc.to/embed/movie/${id}`;
+  } else if (selected === "github") {
+    embedUrl = `https://raw.githack.com/user/repo/main/${id}.html`;
+  } else if (selected === "cloudfare") {
+    embedUrl = `https://cloudflarestream.com/${id}`;
   }
+
+  document.getElementById("video-wrapper").innerHTML = `<iframe width="100%" height="315" src="${embedUrl}" frameborder="0" allowfullscreen></iframe>`;
+  modal.style.display = "flex";
+}
+
+document.getElementById("modal-close").onclick = () => {
+  document.getElementById("modal").style.display = "none";
+  document.getElementById("video-wrapper").innerHTML = "";
 };
 
-document.getElementById('search-bar-input').oninput = async function() {
-  const q = this.value.trim();
-  const results = document.getElementById('search-results');
-  results.innerHTML = q.length < 3 ? '' : '';
-};
+document.getElementById("btn-trending").onclick = () => loadSection("movie");
+document.getElementById("btn-tv").onclick = () => loadSection("tv");
+document.getElementById("btn-anime").onclick = () => loadSection("anime");
 
-loadSection('movie');
+loadSection("movie");
